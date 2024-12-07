@@ -16,7 +16,7 @@ class Grammar {
     
     std::unordered_map<int32_t, int32_t> pos_;
 
-    const int32_t START_NONTERMINAL = 'S';
+    int32_t START_NONTERMINAL = 'S';
     const char* TMP_FILE_NAME = "input_tmp.txt"; // using in input from stdin
     const int32_t TERMINAL_SHIFT = 1'000; // using in deleting mixed rules
 
@@ -187,10 +187,78 @@ class Grammar {
       }
     }
 
+    void MarkEpsilonGenerative(int32_t index, std::vector<bool>& generates_epsilon, std::vector<bool>& used) {
+      used[index] = true;
+      for (const auto& rule : rules_[index]) {
+        if (rule.empty()) {
+          generates_epsilon[index] = true;
+        }
+        for (auto elem : rule) {
+          if (pos_.count(elem) == 0) {
+            continue;
+          }
+          if (!used[pos_[elem]]) {
+            MarkEpsilonGenerative(pos_[index], generates_epsilon, used);
+          }
+          if (generates_epsilon[pos_[elem]]) {
+            generates_epsilon[index] = true;
+          }
+        }
+      }
+    }
 
+    void ProcessEpsilonGenerative(std::vector<bool> generates_epsilon) {
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        int32_t old_rules_size = rules_[index].size();
+        for (int32_t rule_index = 0; rule_index < old_rules_size; ++rule_index) {
+          if (rules_[index][rule_index].size() < 2) {
+            continue;
+          }
+          assert(rules_[index][rule_index].size() == 2 && "Wrong length of rule after deleting long rules!\n");
+          if (generates_epsilon[pos_[rules_[index][rule_index][0]]]) {
+            rules_[index].push_back("" + rules_[index][rule_index][1]);
+          }
+          if (generates_epsilon[pos_[rules_[index][rule_index][1]]]) {
+            rules_[index].push_back("" + rules_[index][rule_index][0]);
+          }
+        }
+      }
+    }
 
     void DeleteEpsilonRules() {
-      bool need_to_save_epsilon = false;
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        std::vector<std::string> new_rules;
+        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
+          if (rules_[index][rule_index].empty()) {
+            continue;
+          }
+          new_rules.push_back(rules_[index][rule_index]);
+        }
+        rules_[index] = new_rules;
+      }
+    }
+
+    void DeleteEpsilonGenerative() {
+      std::vector<bool> generates_epsilon(nonterminals_.size(), false);
+      {
+        std::vector<bool> used(nonterminals_.size(), false);
+        MarkEpsilonGenerative(pos_[START_NONTERMINAL], generates_epsilon, used);
+      }
+
+      ProcessEpsilonGenerative(generates_epsilon);
+      DeleteEpsilonRules;
+
+      if (generates_epsilon[pos_[START_NONTERMINAL]]) {
+        int32_t new_start_nonterminal = GetFreeNonterminal();
+        pos_[new_start_nonterminal] = nonterminals_.size();
+        nonterminals_.push_back(new_start_nonterminal);
+        rules_[pos_[new_start_nonterminal]].push_back("" + START_NONTERMINAL);
+        rules_[pos_[new_start_nonterminal]].push_back("");
+        START_NONTERMINAL = new_start_nonterminal;
+      }
+    }
+
+    void DeleteSingle() {
       
     }
 
@@ -265,8 +333,14 @@ class Grammar {
     void KhomskyNormalizer() {
       DeleteNongenerating();
       DeleteUnreachable();
+      
       DeleteMixed();
       DeleteLong();
+      DeleteEpsilonGenerative();
+      
+      DeleteNongenerating();
+      DeleteUnreachable();
 
+      DeleteSingle();
     }
 };
