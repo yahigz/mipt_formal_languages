@@ -17,8 +17,15 @@ class Grammar {
     std::unordered_map<int32_t, int32_t> pos_;
 
     const int32_t START_NONTERMINAL = 'S';
-    const char* TMP_FILE_NAME = "input_tmp.txt";
-    const int32_t TERMINAL_SHIFT = 1'000;
+    const char* TMP_FILE_NAME = "input_tmp.txt"; // using in input from stdin
+    const int32_t TERMINAL_SHIFT = 1'000; // using in deleting mixed rules
+
+    int32_t free_nonterminal_ = 2'000;
+
+    int32_t GetFreeNonterminal() {
+      int32_t ret = free_nonterminal_++;
+      return ret;
+    }
 
     void CreateFile(const char* filename) const {
       FILE* tmp_ptr = fopen(filename, "w");
@@ -115,6 +122,75 @@ class Grammar {
     }
 
     void DeleteMixed() {
+      for (auto& list_of_rules : rules_) {
+        for (auto& rule : list_of_rules) {
+          for (auto& elem : rule) {
+            if (pos_.count(elem) == 0) {
+              elem = elem + TERMINAL_SHIFT;
+            }
+          }
+        } 
+      }
+
+      for (auto elem : terminals_) {
+        int new_nonterminal = elem + TERMINAL_SHIFT;
+        pos_[new_nonterminal] = nonterminals_.size();
+        nonterminals_.push_back(new_nonterminal);
+        rules_.push_back({"" + elem});
+      }
+    }
+
+    void DeleteLong() {
+      int32_t old_nonterminals_size = nonterminals_.size();
+
+      for (int32_t index = 0; index < old_nonterminals_size; ++index) {
+        std::vector<std::pair<int32_t, std::string>> added_rules;
+        std::vector<bool> is_correct(rules_[index].size(), false);
+
+        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
+          const std::string& rule = rules_[index][rule_index];
+          if (rule.size() < 3) {
+            is_correct[rule_index] = true;
+            continue;
+          }
+          
+          std::string curr;
+          curr += rule[rule.size() - 2] + rule[rule.size() - 1];
+          int nonterminal = GetFreeNonterminal();
+          added_rules.push_back(std::make_pair(nonterminal, curr));
+          
+          for (int32_t adding = rule.size() - 3; adding >= 0; --adding) {
+            curr[0] = rule[adding];
+            curr[1] = nonterminal;
+            nonterminal = GetFreeNonterminal();
+            added_rules.push_back(std::make_pair(nonterminal, curr));
+          }
+        }
+
+        std::vector<std::string> new_rules;
+        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
+          if (is_correct[rule_index]) {
+            new_rules.push_back(rules_[index][rule_index]);
+          }
+        }
+        
+        for (auto& elem : added_rules) {
+          if (pos_.count(elem.first) == 0) {
+            pos_[elem.first] = nonterminals_.size();
+            nonterminals_.push_back(elem.first);
+            rules_.push_back({});
+          }
+          rules_[pos_[elem.first]].push_back(elem.second);
+        }
+
+        rules_[index] = new_rules;
+      }
+    }
+
+
+
+    void DeleteEpsilonRules() {
+      bool need_to_save_epsilon = false;
       
     }
 
@@ -150,16 +226,19 @@ class Grammar {
         assert(pos_.count(nonterminals_[i]) == 0 && "Wrong input format!\n");
         pos_[nonterminals_[i]] = i;
       }
+
       {
         bool found = false;
         for (auto elem : nonterminals_) {
           found |= elem == START_NONTERMINAL;
         }
-        assert(found && "No start state!\n");
+        assert(found && "No start nonterminal!\n");
       }
+
       for (int32_t i = 0; i < terminals_cnt; ++i) {
         in >> terminals_[i];
       }
+
       for (int32_t i = 0; i < rules_cnt; ++i) {
         char nonterminal;
         in >> nonterminal;
@@ -187,5 +266,7 @@ class Grammar {
       DeleteNongenerating();
       DeleteUnreachable();
       DeleteMixed();
+      DeleteLong();
+
     }
 };
