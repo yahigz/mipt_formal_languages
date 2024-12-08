@@ -13,8 +13,31 @@ class Grammar {
   private:
     std::vector<int32_t> nonterminals_;
     std::vector<char> terminals_;
-    std::vector<std::vector<std::string>> rules_; // rules_[i] = {rules for nonterminals_[i]}
-    // TODO: change it to std::vector<std::vector<std::vector<int32_t>>> rules_
+    std::vector<std::vector<std::vector<int32_t>>> rules_; // rules_[i] = {rules for nonterminals_[i]}
+
+    std::vector<int32_t> MergeVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) const {
+      std::vector<int32_t> result(left.size() + right.size());
+      int32_t index = 0;
+      while (index < left.size()) {
+        result[index] = left[index];
+        ++index;
+      }
+      while (index < left.size() + right.size()) {
+        result[index] = right[index - left.size()];
+        ++index;
+      }
+      return result;
+    }
+
+    bool CompareVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) const {
+      int32_t min_len = std::min(left.size(), right.size());
+      for (int32_t index = 0; index < min_len; ++index) {
+        if (left[index] != right[index]) {
+          return left[index] < right[index];
+        }
+      }
+      return left.size() < right.size();
+    }
     
     std::unordered_map<int32_t, int32_t> pos_;
 
@@ -76,7 +99,7 @@ class Grammar {
 
     void DeleteNonterminalsWithoutProperty(std::vector<bool>& has_property) {
       std::unordered_map<int32_t, int32_t> new_pos;
-      std::vector<std::vector<std::string>> new_rules;
+      std::vector<std::vector<std::vector<int32_t>>> new_rules;
       std::vector<int32_t> new_nonterminals;
 
       for (int32_t index = 0; index < nonterminals_.size(); ++index) {
@@ -85,7 +108,7 @@ class Grammar {
         }
         new_pos[nonterminals_[index]] = new_nonterminals.size();
         new_nonterminals.push_back(nonterminals_[index]);
-        new_rules.push_back({""});
+        new_rules.push_back({{}});
         new_rules[new_pos[nonterminals_[index]]] = rules_[index];
       }
 
@@ -138,7 +161,7 @@ class Grammar {
         int new_nonterminal = elem + TERMINAL_SHIFT;
         pos_[new_nonterminal] = nonterminals_.size();
         nonterminals_.push_back(new_nonterminal);
-        rules_.push_back({"" + elem});
+        rules_.push_back({{elem}});
       }
     }
 
@@ -146,18 +169,17 @@ class Grammar {
       int32_t old_nonterminals_size = nonterminals_.size();
 
       for (int32_t index = 0; index < old_nonterminals_size; ++index) {
-        std::vector<std::pair<int32_t, std::string>> added_rules;
+        std::vector<std::pair<int32_t, std::vector<int32_t>>> added_rules;
         std::vector<bool> is_correct(rules_[index].size(), false);
 
         for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
-          const std::string& rule = rules_[index][rule_index];
+          const std::vector<int32_t>& rule = rules_[index][rule_index];
           if (rule.size() < 3) {
             is_correct[rule_index] = true;
             continue;
           }
           
-          std::string curr;
-          curr += rule[rule.size() - 2] + rule[rule.size() - 1];
+          std::vector<int32_t> curr = MergeVectors({rule[rule.size() - 2]}, {rule[rule.size() - 1]});
           int nonterminal = GetFreeNonterminal();
           added_rules.push_back(std::make_pair(nonterminal, curr));
           
@@ -169,7 +191,7 @@ class Grammar {
           }
         }
 
-        std::vector<std::string> new_rules;
+        std::vector<std::vector<int32_t>> new_rules;
         for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
           if (is_correct[rule_index]) {
             new_rules.push_back(rules_[index][rule_index]);
@@ -218,10 +240,10 @@ class Grammar {
           }
           assert(rules_[index][rule_index].size() == 2 && "Wrong length of rule after deleting long rules!\n");
           if (generates_epsilon[pos_[rules_[index][rule_index][0]]]) {
-            rules_[index].push_back("" + rules_[index][rule_index][1]);
+            rules_[index].push_back({rules_[index][rule_index][1]});
           }
           if (generates_epsilon[pos_[rules_[index][rule_index][1]]]) {
-            rules_[index].push_back("" + rules_[index][rule_index][0]);
+            rules_[index].push_back({rules_[index][rule_index][0]});
           }
         }
       }
@@ -229,7 +251,7 @@ class Grammar {
 
     void DeleteEpsilonRules() {
       for (int32_t index = 0; index < nonterminals_.size(); ++index) {
-        std::vector<std::string> new_rules;
+        std::vector<std::vector<int32_t>> new_rules;
         for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
           if (rules_[index][rule_index].empty()) {
             continue;
@@ -254,13 +276,13 @@ class Grammar {
         int32_t new_start_nonterminal = GetFreeNonterminal();
         pos_[new_start_nonterminal] = nonterminals_.size();
         nonterminals_.push_back(new_start_nonterminal);
-        rules_[pos_[new_start_nonterminal]].push_back("" + START_NONTERMINAL);
-        rules_[pos_[new_start_nonterminal]].push_back("");
+        rules_[pos_[new_start_nonterminal]].push_back({START_NONTERMINAL});
+        rules_[pos_[new_start_nonterminal]].push_back({});
         START_NONTERMINAL = new_start_nonterminal;
       }
     }
 
-    bool IsSingleRule(const std::string& rule) {
+    bool IsSingleRule(const std::vector<int32_t>& rule) {
         if (rule.size() != 1) {
           return false;
         }
@@ -326,8 +348,8 @@ class Grammar {
       return {components, color};
     }
 
-    std::vector<std::string> FindNonSingleRulesOfComponent(std::vector<int32_t>& comp) {
-      std::vector<std::string> result;
+    std::vector<std::vector<int32_t>> FindNonSingleRulesOfComponent(std::vector<int32_t>& comp) {
+      std::vector<std::vector<int32_t>> result;
       for (auto index : comp) {
         for (const auto& rule : rules_[index]) {
           if (IsSingleRule(rule)) {
@@ -336,12 +358,12 @@ class Grammar {
           result.push_back(rule);
         }
       }
-      sort(result.begin(), result.end());
+      sort(result.begin(), result.end(), CompareVectors);
       result.resize(unique(result.begin(), result.end()) - result.begin());
       return result;
     }
     
-    void WriteNewRulesInComponent(std::vector<int32_t>& comp, std::vector<std::string>& new_rules) {
+    void WriteNewRulesInComponent(std::vector<int32_t>& comp, std::vector<std::vector<int32_t>>& new_rules) {
       for (auto index : comp) {
         rules_[index] = new_rules;
       }
@@ -360,7 +382,7 @@ class Grammar {
       }
       sort(to.begin(), to.end());
       to.resize(unique(to.begin(), to.end()) - to.begin());
-      std::vector<std::string> new_rules;
+      std::vector<std::vector<int32_t>> new_rules;
       for (auto elem : to) {
         if (!used[elem]) {
           WriteTransitiveClosure(elem, used, color, components);
@@ -442,7 +464,7 @@ class Grammar {
         assert(tmp == '-' && "Wrong rule format!\n");
         in >> tmp;
         in.get(tmp);
-        std::string rule = "";
+        std::vector<int32_t> rule;
         while (tmp != '\n') {
           rule.push_back(tmp);
           in.get(tmp);
@@ -466,3 +488,4 @@ class Grammar {
       DeleteSingle();
     }
 };
+
