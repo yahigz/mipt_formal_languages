@@ -409,12 +409,6 @@ class Grammar {
         components = tmp.first;
         color = tmp.second;
       }
-      for (const auto& comp : components) {
-        for (auto elem : comp) {
-          std::cout << nonterminals_[elem] << ' ';
-        }
-        std::cout << std::endl;
-      }
       std::vector<bool> used(components.size());
       for (int32_t index = 0; index < components.size(); ++index) {
         if (used[index]) {
