@@ -426,7 +426,7 @@ class Grammar {
 
   public:
 
-    bool InputGrammarFromStdin() {
+    /*bool InputGrammarFromStdin() {
       CreateFile(TMP_FILE_NAME);
 
       std::ofstream out(TMP_FILE_NAME);
@@ -438,7 +438,7 @@ class Grammar {
       
       out.close();
       return InputGrammarFromFile(TMP_FILE_NAME);
-    }
+    }*/
 
     bool InputGrammarFromFile(std::string filename) {
       std::ifstream in(filename.c_str());
