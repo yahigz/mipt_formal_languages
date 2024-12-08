@@ -71,7 +71,7 @@ class Grammar {
           if (pos_.count(elem) > 0) {
             found_nonterminal = true;
             if (!used[pos_[elem]]) {
-              MarkGenerating(used[pos_[elem]], is_generating, used);
+              MarkGenerating(pos_[elem], is_generating, used);
             }
             can_generate &= is_generating[pos_[elem]];
           }
@@ -170,7 +170,7 @@ class Grammar {
         std::vector<std::pair<int32_t, std::vector<int32_t>>> added_rules;
         std::vector<bool> is_correct(rules_[index].size(), false);
 
-        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
+        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
           const std::vector<int32_t>& rule = rules_[index][rule_index];
           if (rule.size() < 3) {
             is_correct[rule_index] = true;
@@ -181,20 +181,27 @@ class Grammar {
           int nonterminal = GetFreeNonterminal();
           added_rules.push_back(std::make_pair(nonterminal, curr));
           
-          for (int32_t adding = rule.size() - 3; adding >= 0; --adding) {
+          for (int32_t adding = rule.size() - 3; adding >= 1; --adding) {
             curr[0] = rule[adding];
             curr[1] = nonterminal;
             nonterminal = GetFreeNonterminal();
             added_rules.push_back(std::make_pair(nonterminal, curr));
           }
+
+          curr[0] = rule[0];
+          curr[1] = nonterminal;
+          nonterminal = nonterminals_[index];
+          added_rules.push_back(std::make_pair(nonterminal, curr));
         }
 
         std::vector<std::vector<int32_t>> new_rules;
-        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++index) {
+        for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
           if (is_correct[rule_index]) {
             new_rules.push_back(rules_[index][rule_index]);
           }
         }
+        
+        rules_[index] = new_rules;
         
         for (auto& elem : added_rules) {
           if (pos_.count(elem.first) == 0) {
@@ -204,28 +211,26 @@ class Grammar {
           }
           rules_[pos_[elem.first]].push_back(elem.second);
         }
-
-        rules_[index] = new_rules;
       }
     }
 
     void MarkEpsilonGenerative(int32_t index, std::vector<bool>& generates_epsilon, std::vector<bool>& used) {
       used[index] = true;
       for (const auto& rule : rules_[index]) {
-        if (rule.empty()) {
-          generates_epsilon[index] = true;
-        }
+        bool epsilon_rule = true;
         for (auto elem : rule) {
           if (pos_.count(elem) == 0) {
+            epsilon_rule = false;
             continue;
           }
           if (!used[pos_[elem]]) {
-            MarkEpsilonGenerative(pos_[index], generates_epsilon, used);
+            MarkEpsilonGenerative(pos_[elem], generates_epsilon, used);
           }
-          if (generates_epsilon[pos_[elem]]) {
-            generates_epsilon[index] = true;
+          if (!generates_epsilon[pos_[elem]]) {
+            epsilon_rule = false;
           }
         }
+        generates_epsilon[index] = (epsilon_rule ? true : generates_epsilon[index]);
       }
     }
 
@@ -266,7 +271,6 @@ class Grammar {
         std::vector<bool> used(nonterminals_.size(), false);
         MarkEpsilonGenerative(pos_[START_NONTERMINAL], generates_epsilon, used);
       }
-
       ProcessEpsilonGenerative(generates_epsilon);
       DeleteEpsilonRules();
 
@@ -296,7 +300,7 @@ class Grammar {
         if (!IsSingleRule(rule)) {
           continue;
         }
-        if (used[index]) {
+        if (used[rule[0]]) {
           continue;
         }
         TopSort(pos_[rule[0]], used, order);
@@ -331,12 +335,17 @@ class Grammar {
     std::pair<std::vector<std::vector<int32_t>>, std::vector<int32_t>> FindCondensation() {
       std::vector<int32_t> order;
       std::vector<bool> used(nonterminals_.size());
-      TopSort(pos_[START_NONTERMINAL], used, order); // now we are working with indexes of nonterminals
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        if (used[index]) {
+          continue;
+        }
+        TopSort(index, used, order); // now we are working with indexes of nonterminals
+      }
       reverse(order.begin(), order.end());
       std::vector<std::vector<int32_t>> t_graph = GenerateTransposedGraph();
       std::vector<int32_t> color(nonterminals_.size(), -1);
       std::vector<std::vector<int32_t>> components;
-      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+      for (auto index : order) {
         if (color[index] == -1) {
           color[index] = components.size();
           components.push_back({});
@@ -380,7 +389,7 @@ class Grammar {
       }
       sort(to.begin(), to.end());
       to.resize(unique(to.begin(), to.end()) - to.begin());
-      std::vector<std::vector<int32_t>> new_rules;
+      std::vector<std::vector<int32_t>> new_rules = FindNonSingleRulesOfComponent(components[comp_index]);
       for (auto elem : to) {
         if (!used[elem]) {
           WriteTransitiveClosure(elem, used, color, components);
@@ -400,8 +409,19 @@ class Grammar {
         components = tmp.first;
         color = tmp.second;
       }
+      for (const auto& comp : components) {
+        for (auto elem : comp) {
+          std::cout << nonterminals_[elem] << ' ';
+        }
+        std::cout << std::endl;
+      }
       std::vector<bool> used(components.size());
-      WriteTransitiveClosure(color[pos_[START_NONTERMINAL]], used, color, components);
+      for (int32_t index = 0; index < components.size(); ++index) {
+        if (used[index]) {
+          continue;
+        }
+        WriteTransitiveClosure(index, used, color, components);
+      }
     }
 
   public:
@@ -420,7 +440,7 @@ class Grammar {
       return InputGrammarFromFile(TMP_FILE_NAME);
     }
 
-    bool InputGrammarFromFile(std::string filename = "") {
+    bool InputGrammarFromFile(std::string filename) {
       std::ifstream in(filename.c_str());
       
       int32_t nonterminals_cnt;
@@ -433,7 +453,9 @@ class Grammar {
       rules_.resize(rules_cnt);
 
       for (int32_t i = 0; i < nonterminals_cnt; ++i) {
-        in >> nonterminals_[i];
+        char x;
+        in >> x;
+        nonterminals_[i] = static_cast<int32_t>(x);
         assert(pos_.count(nonterminals_[i]) == 0 && "Wrong input format!\n");
         pos_[nonterminals_[i]] = i;
       }
@@ -462,7 +484,10 @@ class Grammar {
         in >> tmp;
         assert(tmp == '-' && "Wrong rule format!\n");
         in >> tmp;
-        in.get(tmp);
+        tmp = ' ';
+        while (tmp == ' ') {
+          in.get(tmp);
+        }
         std::vector<int32_t> rule;
         while (tmp != '\n') {
           rule.push_back(tmp);
@@ -470,6 +495,11 @@ class Grammar {
         }
         rules_[pos_[nonterminal]].push_back(rule);
       }
+
+      char tmp;
+      in >> tmp;
+      START_NONTERMINAL = static_cast<int32_t>(tmp);
+      std::cerr << "input done" << std::endl;
       return true;
     }
 
@@ -480,11 +510,11 @@ class Grammar {
       DeleteMixed();
       DeleteLong();
       DeleteEpsilonGenerative();
+
+      DeleteSingle();
       
       DeleteNongenerating();
       DeleteUnreachable();
-
-      DeleteSingle();
     }
   
     void PrintGrammar() const {
@@ -495,7 +525,7 @@ class Grammar {
             std::cout << "epsilon\n";
             continue;
           }
-          if (rule.size() == 1) {
+          if (rule.size() == 1 && pos_.count(rule[0]) == 0) {
             std::cout << static_cast<char>(rule[0]) << '\n';
             continue;
           }
