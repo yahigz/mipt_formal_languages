@@ -1,5 +1,3 @@
-#pragma once
-
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -15,7 +13,7 @@ class Grammar {
     std::vector<char> terminals_;
     std::vector<std::vector<std::vector<int32_t>>> rules_; // rules_[i] = {rules for nonterminals_[i]}
 
-    std::vector<int32_t> MergeVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) const {
+    static std::vector<int32_t> MergeVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) {
       std::vector<int32_t> result(left.size() + right.size());
       int32_t index = 0;
       while (index < left.size()) {
@@ -29,7 +27,7 @@ class Grammar {
       return result;
     }
 
-    bool CompareVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) const {
+    static bool CompareVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right) {
       int32_t min_len = std::min(left.size(), right.size());
       for (int32_t index = 0; index < min_len; ++index) {
         if (left[index] != right[index]) {
@@ -270,7 +268,7 @@ class Grammar {
       }
 
       ProcessEpsilonGenerative(generates_epsilon);
-      DeleteEpsilonRules;
+      DeleteEpsilonRules();
 
       if (generates_epsilon[pos_[START_NONTERMINAL]]) {
         int32_t new_start_nonterminal = GetFreeNonterminal();
@@ -407,6 +405,7 @@ class Grammar {
     }
 
   public:
+
     bool InputGrammarFromStdin() {
       CreateFile(TMP_FILE_NAME);
 
@@ -474,7 +473,7 @@ class Grammar {
       return true;
     }
 
-    void KhomskyNormalizer() {
+    void NormalizeToKhomsky() {
       DeleteNongenerating();
       DeleteUnreachable();
       
@@ -487,5 +486,24 @@ class Grammar {
 
       DeleteSingle();
     }
+  
+    void PrintGrammar() const {
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        std::cout << nonterminals_[index] << ":\n";
+        for (const auto rule : rules_[index]) {
+          if (rule.size() == 0) {
+            std::cout << "epsilon\n";
+            continue;
+          }
+          if (rule.size() == 1) {
+            std::cout << static_cast<char>(rule[0]) << '\n';
+            continue;
+          }
+          for (auto elem : rule) {
+            std::cout << elem << ' ';
+          }
+          std::cout << '\n';
+        }
+      }
+    }
 };
-
