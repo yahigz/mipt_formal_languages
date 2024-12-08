@@ -1,0 +1,11 @@
+6 3 7
+STABEF
+abf
+S -> T
+T -> A
+T -> B
+A -> a
+B -> b
+E -> F
+F -> f
+S
