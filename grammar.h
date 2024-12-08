@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -13,6 +14,7 @@ class Grammar {
     std::vector<int32_t> nonterminals_;
     std::vector<char> terminals_;
     std::vector<std::vector<std::string>> rules_; // rules_[i] = {rules for nonterminals_[i]}
+    // TODO: change it to std::vector<std::vector<std::vector<int32_t>>> rules_
     
     std::unordered_map<int32_t, int32_t> pos_;
 
@@ -258,8 +260,128 @@ class Grammar {
       }
     }
 
+    bool IsSingleRule(const std::string& rule) {
+        if (rule.size() != 1) {
+          return false;
+        }
+        if (pos_.count(rule[0]) == 0) {
+          return false;
+        }
+        return true;
+    }
+
+    void TopSort(int32_t index, std::vector<bool>& used, std::vector<int32_t>& order) {
+      used[index] = true;
+      for (const auto& rule : rules_[index]) {
+        if (!IsSingleRule(rule)) {
+          continue;
+        }
+        if (used[index]) {
+          continue;
+        }
+        TopSort(pos_[rule[0]], used, order);
+      }
+      order.push_back(index);
+    }
+
+    std::vector<std::vector<int32_t>> GenerateTransposedGraph() {
+      std::vector<std::vector<int32_t>> t_graph(nonterminals_.size());
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        for (const auto& rule : rules_[index]) {
+          if (!IsSingleRule(rule)) {
+            continue;
+          }
+          t_graph[pos_[rule[0]]].push_back(index);
+        }
+      }
+      return t_graph;
+    }
+
+    void WriteComponent(int32_t index, std::vector<int32_t>& color, std::vector<int32_t>& comp, std::vector<std::vector<int32_t>>& graph) {
+      comp.push_back(index);
+      for (auto to : graph[index]) {
+        if (color[to] != -1) {
+          continue;
+        }
+        color[to] = color[index];
+        WriteComponent(to, color, comp, graph);
+      }
+    }
+
+    std::pair<std::vector<std::vector<int32_t>>, std::vector<int32_t>> FindCondensation() {
+      std::vector<int32_t> order;
+      std::vector<bool> used(nonterminals_.size());
+      TopSort(pos_[START_NONTERMINAL], used, order); // now we are working with indexes of nonterminals
+      reverse(order.begin(), order.end());
+      std::vector<std::vector<int32_t>> t_graph = GenerateTransposedGraph();
+      std::vector<int32_t> color(nonterminals_.size(), -1);
+      std::vector<std::vector<int32_t>> components;
+      for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+        if (color[index] == -1) {
+          color[index] = components.size();
+          components.push_back({});
+          WriteComponent(index, color, components.back(), t_graph);
+        }
+      }
+      return {components, color};
+    }
+
+    std::vector<std::string> FindNonSingleRulesOfComponent(std::vector<int32_t>& comp) {
+      std::vector<std::string> result;
+      for (auto index : comp) {
+        for (const auto& rule : rules_[index]) {
+          if (IsSingleRule(rule)) {
+            continue;
+          }
+          result.push_back(rule);
+        }
+      }
+      sort(result.begin(), result.end());
+      result.resize(unique(result.begin(), result.end()) - result.begin());
+      return result;
+    }
+    
+    void WriteNewRulesInComponent(std::vector<int32_t>& comp, std::vector<std::string>& new_rules) {
+      for (auto index : comp) {
+        rules_[index] = new_rules;
+      }
+    }
+
+    void WriteTransitiveClosure(int32_t comp_index, std::vector<bool>& used, std::vector<int32_t>& color, std::vector<std::vector<int32_t>>& components) {
+      used[comp_index] = true;
+      std::vector<int32_t> to;
+      for (auto elem : components[comp_index]) {
+        for (const auto& rule : rules_[elem]) {
+          if (!IsSingleRule(rule)) {
+            continue;
+          }
+          to.push_back(color[pos_[rule[0]]]);
+        }
+      }
+      sort(to.begin(), to.end());
+      to.resize(unique(to.begin(), to.end()) - to.begin());
+      std::vector<std::string> new_rules;
+      for (auto elem : to) {
+        if (!used[elem]) {
+          WriteTransitiveClosure(elem, used, color, components);
+        }
+        for (const auto& rule : rules_[components[elem][0]]) {
+          new_rules.push_back(rule);
+        }
+      }
+      WriteNewRulesInComponent(components[comp_index], new_rules);
+    }
+
     void DeleteSingle() {
-      
+      std::vector<std::vector<int32_t>> components;
+      std::vector<int32_t> color;
+      {
+        std::pair<std::vector<std::vector<int32_t>>, std::vector<int32_t>> tmp = FindCondensation();
+        components = tmp.first;
+        color = tmp.second;
+      }
+      std::vector<bool> used(components.size());
+      WriteTransitiveClosure(color[pos_[START_NONTERMINAL]], used, color, components);
     }
 
   public:
