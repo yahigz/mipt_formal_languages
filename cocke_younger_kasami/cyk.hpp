@@ -1,6 +1,6 @@
+#pragma once
 
-
-#include "grammar.cpp"
+#include "../grammar.cpp"
 
 class CYK : public Parser {
  private:
@@ -20,6 +20,10 @@ class CYK : public Parser {
   void DoPrecalc() override;
 
  public:
+
+  CYK();
+
+  CYK(Grammar& g);
 
   bool ContainedInGrammar(const std::string& word) override;
 };

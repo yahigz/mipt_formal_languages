@@ -1,3 +1,9 @@
+#pragma once
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 class Parser;
 
 class Grammar {
@@ -74,19 +80,19 @@ class Grammar {
     std::vector<std::vector<std::vector<int32_t>>> GetRules() const;
     std::unordered_map<int32_t, int32_t> GetPos() const;
     int32_t GetStartNonTerminal() const;
+
+    bool ContainsWord(const std::string& word) const;
 };
 
 
 class Parser {
  protected:
-  const Grammar* ptr_g_;
+  Grammar* ptr_g_;
 
-  void virtual DoPrecalc();
+  void virtual DoPrecalc() = 0;
 
  public:
-  Parser(Grammar g): ptr_g_(&g) {
-    DoPrecalc();
-  }
+  Parser(Grammar& g);
 
-  bool virtual ContainedInGrammar(const std::string& word);
+  bool virtual ContainedInGrammar(const std::string& word) = 0;
 };

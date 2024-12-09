@@ -1,11 +1,6 @@
-6 3 7
-STABEF
-abf
-S -> T
-T -> A
-T -> B
-A -> a
-B -> b
-E -> F
-F -> f
+1 2 2
+S
+ab
+S-> aSbS
+S -> 
 S

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -490,6 +492,9 @@ void Grammar::PrintGrammar() const {
 
 void Grammar::SetParser(Parser* parser) { parser_ = parser; }
 
+bool Grammar::ContainsWord(const std::string& word) const {
+  return parser_->ContainedInGrammar(word);
+}
 
 std::vector<char> Grammar::GetTerminals() const {
   return terminals_;
@@ -510,3 +515,5 @@ std::unordered_map<int32_t, int32_t> Grammar::GetPos() const {
 int32_t Grammar::GetStartNonTerminal() const {
   return START_NONTERMINAL;
 }
+
+Parser::Parser(Grammar& g): ptr_g_(&g) {}
