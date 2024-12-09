@@ -487,3 +487,26 @@ void Grammar::PrintGrammar() const {
     }
   }
 }
+
+void Grammar::SetParser(Parser* parser) { parser_ = parser; }
+
+
+std::vector<char> Grammar::GetTerminals() const {
+  return terminals_;
+}
+
+std::vector<int32_t> Grammar::GetNonTerminals() const {
+  return nonterminals_;
+}
+
+std::vector<std::vector<std::vector<int32_t>>> Grammar::GetRules() const {
+  return rules_; 
+}
+
+std::unordered_map<int32_t, int32_t> Grammar::GetPos() const {
+  return pos_;
+}
+
+int32_t Grammar::GetStartNonTerminal() const {
+  return START_NONTERMINAL;
+}

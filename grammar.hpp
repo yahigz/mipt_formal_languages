@@ -1,15 +1,18 @@
+class Parser;
+
 class Grammar {
-  private:
+  protected:
     std::vector<int32_t> nonterminals_;
     std::vector<char> terminals_;
     std::vector<std::vector<std::vector<int32_t>>> rules_; // rules_[i] = {rules for nonterminals_[i]}
-
-    static std::vector<int32_t> MergeVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right);
-
-    static bool CompareVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right);
-    
     std::unordered_map<int32_t, int32_t> pos_;
 
+  private:
+    Parser* parser_;
+
+    static std::vector<int32_t> MergeVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right);
+    static bool CompareVectors(const std::vector<int32_t>& left, const std::vector<int32_t>& right);
+    
     int32_t START_NONTERMINAL = 'S';
     const char* TMP_FILE_NAME = "input_tmp.txt"; // using in input from stdin
     const int32_t TERMINAL_SHIFT = 1'000; // using in deleting mixed rules
@@ -61,4 +64,29 @@ class Grammar {
     void PrintGrammar() const;
 
     void NormalizeToKhomsky();
+
+    friend class Parser;
+
+    void SetParser(Parser* parser);
+
+    std::vector<char> GetTerminals() const;
+    std::vector<int32_t> GetNonTerminals() const;
+    std::vector<std::vector<std::vector<int32_t>>> GetRules() const;
+    std::unordered_map<int32_t, int32_t> GetPos() const;
+    int32_t GetStartNonTerminal() const;
+};
+
+
+class Parser {
+ protected:
+  const Grammar* ptr_g_;
+
+  void virtual DoPrecalc();
+
+ public:
+  Parser(Grammar g): ptr_g_(&g) {
+    DoPrecalc();
+  }
+
+  bool virtual ContainedInGrammar(const std::string& word);
 };
