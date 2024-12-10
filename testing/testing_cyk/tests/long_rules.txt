@@ -1,0 +1,18 @@
+5 3 7
+STUVW
+abc
+S->aTbUcV
+T->SSS
+T->b
+U->UUU
+W->STUVW
+V->a
+U->a
+S
+6
+abbaca
+aabbacaabbacaabbacabaca
+aabbacaabbacabbacabaaaaaaaca
+abbaaaaaaaaaaaacca
+aabbaaaaaaaaaaaaaaaacaabbaaaaaaaaaaaaaaaacaabbaaaaaaaaaaaaaaaacabaaaca
+abbaaaaaaaaaaaaaaaaca
