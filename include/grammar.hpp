@@ -1,5 +1,6 @@
 #pragma once
 
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,7 +32,9 @@ class Grammar {
     void DeleteNonterminalsWithoutProperty(std::vector<bool>& has_property);
 
     // deleting nongenerating
-    void MarkGenerating(int32_t index, std::vector<bool>& is_generating, std::vector<bool>& used);
+    void WriteWhere(std::vector<std::vector<std::pair<int32_t, int32_t>>>& where);
+    void WriteCount(std::vector<std::vector<int32_t>>& count, const std::vector<std::vector<std::pair<int32_t, int32_t>>>& where);
+    void WriteQueue(std::queue<std::pair<int32_t, int32_t>>& q, const std::vector<std::vector<int32_t>>& count);
 
     void DeleteNongenerating();
 

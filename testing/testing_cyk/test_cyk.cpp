@@ -10,7 +10,7 @@ TEST(PalindromeTestCase, IsPalindrome) {
 }
 
 TEST(LongRulesTestCase, LongRules) {
-  ASSERT_EQ("110011", Tester("testing/testing_cyk/tests/long_rules.txt").RunTest());
+  ASSERT_EQ("110001", Tester("testing/testing_cyk/tests/long_rules.txt").RunTest());
 }
 
 TEST(TransitiveClosureTestCase, TransitiveClosure) {

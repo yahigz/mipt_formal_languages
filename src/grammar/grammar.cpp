@@ -5,9 +5,11 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <unordered_map>
-#include <vector>
+#include <queue>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "grammar.hpp"
 
@@ -46,33 +48,6 @@ void Grammar::CreateFile(const char* filename) const {
   // TODO: delete $filename
 }
 
-void Grammar::MarkGenerating(int32_t index, std::vector<bool>& is_generating, std::vector<bool>& used) {
-  used[index] = true;
-  
-  for (const auto& rule : rules_[index]) {
-    if (rule.empty()) { // epsilon
-      is_generating[index] = true;
-    }
-    
-    bool found_nonterminal = false;
-    bool can_generate = true;
-    
-    for (auto elem : rule) {
-      if (pos_.count(elem) > 0) {
-        found_nonterminal = true;
-        if (!used[pos_[elem]]) {
-          MarkGenerating(pos_[elem], is_generating, used);
-        }
-        can_generate &= is_generating[pos_[elem]];
-      }
-    }
-    
-    if (!found_nonterminal || can_generate) {
-      is_generating[index] = true;
-    }
-  }
-}
-
 void Grammar::MarkReachable(int32_t index, std::vector<bool>& used) {
   used[index] = true;
   
@@ -103,15 +78,70 @@ void Grammar::DeleteNonterminalsWithoutProperty(std::vector<bool>& has_property)
   nonterminals_ = new_nonterminals;
 }
 
-void Grammar::DeleteNongenerating() {
-  std::vector<bool> is_generating(nonterminals_.size(), false);
-  std::vector<bool> used(nonterminals_.size(), false);
+void Grammar::WriteWhere(std::vector<std::vector<std::pair<int32_t, int32_t>>>& where) {
   for (int32_t index = 0; index < nonterminals_.size(); ++index) {
-    if (!used[index]) {
-      MarkGenerating(index, is_generating, used);
+    for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
+      std::unordered_set<int32_t> st;
+      for (auto elem : rules_[index][rule_index]) {
+        if (pos_.count(elem) == 0) {
+          continue;
+        }
+        if (st.count(pos_[elem]) > 0) {
+          continue;
+        }
+        st.insert(pos_[elem]);
+        where[pos_[elem]].push_back({index, rule_index});
+      }
     }
   }
-  
+}
+
+void Grammar::WriteCount(std::vector<std::vector<int32_t>>& count, const std::vector<std::vector<std::pair<int32_t, int32_t>>>& where) {
+  for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+    count[index].resize(rules_[index].size());
+  }
+  for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+    for (auto elem : where[index]) {
+      ++count[elem.first][elem.second];
+    }
+  } 
+}
+
+void Grammar::WriteQueue(std::queue<std::pair<int32_t, int32_t>>& q, const std::vector<std::vector<int32_t>>& count) {
+  for (int32_t index = 0; index < nonterminals_.size(); ++index) {
+    for (int32_t rule_index = 0; rule_index < rules_[index].size(); ++rule_index) {
+      if (count[index][rule_index] == 0) {
+        q.push({index, rule_index});
+      }
+    }
+  }
+}
+
+void Grammar::DeleteNongenerating() {
+  std::vector<bool> is_generating(nonterminals_.size(), false);
+  std::queue<std::pair<int32_t, int32_t>> q;
+  std::vector<std::vector<std::pair<int32_t, int32_t>>> where(nonterminals_.size());
+  std::vector<std::vector<int32_t>> count(nonterminals_.size());
+
+  WriteWhere(where);
+  WriteCount(count, where);
+  WriteQueue(q, count);
+
+  while (!q.empty()) {
+    std::pair<int32_t, int32_t> curr = q.front();
+    q.pop();
+    if (is_generating[curr.first]) {
+      continue;
+    }
+    for (auto elem : where[curr.first]) {
+      --count[elem.first][elem.second];
+      if (count[elem.first][elem.second] == 0) {
+        q.push(elem);
+      }
+    }
+    is_generating[curr.first] = true;
+  }
+
   DeleteNonterminalsWithoutProperty(is_generating);
 }
 
@@ -464,10 +494,9 @@ void Grammar::NormalizeToKhomsky() {
   
   DeleteMixed();
   DeleteLong();
-  PrintGrammar();
   DeleteEpsilonGenerative();
   DeleteSingle();
-  
+
   DeleteNongenerating();
   DeleteUnreachable();
 }
