@@ -52,7 +52,6 @@ Tester::Tester(const std::string& filename) {
     while (queries > 0) {
       std::string word;
       getline(in_words, word);
-      std::cout << word << std::endl;
       if (g.ContainsWord(word)) {
         result.push_back('1');
       } else {
