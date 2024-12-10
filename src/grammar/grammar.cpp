@@ -465,8 +465,8 @@ void Grammar::NormalizeToKhomsky() {
   DeleteMixed();
   DeleteLong();
   PrintGrammar();
-  DeleteSingle();
   DeleteEpsilonGenerative();
+  DeleteSingle();
   
   DeleteNongenerating();
   DeleteUnreachable();
