@@ -1,0 +1,23 @@
+6 3 10
+SUVABC
+abc
+S->aUbVc
+U->A
+V->B
+A->a
+B->b
+S->UV
+U->AA
+A->
+V->BB
+B->
+S
+8
+
+aaabbbc
+abc
+aabbc
+aabbb
+aaa
+aaaabbbc
+abbbc
