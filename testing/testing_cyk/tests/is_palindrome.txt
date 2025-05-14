@@ -1,0 +1,26 @@
+1 6 13
+S
+abcdef
+S ->
+S->aSa
+S->bSb
+S->cSc
+S->dSd
+S->eSe
+S->fSf
+S->a
+S->b
+S->c
+S->d
+S->e
+S->f
+S
+8
+abcdeffedcba
+aboba
+abacaba
+aaaaaaaaaaaaaaaaaaaaaaaaaa
+bipkikpib
+abba
+iwankalinininilaknawi
+

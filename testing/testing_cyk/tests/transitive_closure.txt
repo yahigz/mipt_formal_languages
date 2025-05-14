@@ -1,0 +1,25 @@
+5 4 11
+SABCD
+abcd
+S->A
+A->B
+B->C
+C->D
+D->A
+A->a
+B->b
+C->c
+D->d
+C->Cc
+D->Dd
+S
+9
+ccccccdddddcdccdcdcdcdcdcddddddc
+a
+b
+c
+ab
+acccccccc
+ca
+bdddccccddddddcdcdcdcdccdcddcdcdcdcdcdc
+cac

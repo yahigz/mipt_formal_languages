@@ -1,0 +1,14 @@
+UBUNTU 20
+sudo apt update
+sudo apt install make
+sudo apt install build-essential
+sudo apt install g++
+sudo apt install cmake
+sudo apt-get install libgtest-dev libgmock-dev
+sudo apt-get install cmake
+cd /usr/src/googletest/
+sudo mkdir build
+cd build
+sudo cmake ..
+sudo make
+sudo cp lib/* /usr/lib
